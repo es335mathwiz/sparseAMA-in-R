@@ -1,0 +1,162 @@
+\documentclass[12pt]{article}
+\usepackage[margin = 1.2in, nohead, nofoot]{geometry}
+\usepackage{color}
+\usepackage{hyperref}
+\title{How to use the Anderson-Moore \\Algorithm with EViews and R}
+\author{Aneesh Raghunandan\thanks{Updated by Gary S. Anderson October 27, 2010.}}
+\date{August 6, 2010  } 
+\begin{document}
+\maketitle
+\section{Using EViews}
+\subsection{Preliminaries} 
+You will need the ``R and Friends'' software, found \href{http://rcom.univie.ac.at/download.html}{here}.\footnote{For Board computers, you will need to ask ARC to install this software.}  This is the software that uses Microsoft's COM technology to connect EViews to R.\footnote{This technology is also used by the
+package \href{http://cran.r-project.org/web/packages/R.matlab/index.html}{R.matlab}}
+This R package has not been tested on  R versions lower than 2.11.0.  Consequently,
+it may be necessary  to use  an R that is version 2.11.0 or later.
+ 
+The EViews commands you will need to use from the EViews command line are \bfseries xopen, xclose, xrun, xput,\normalfont and \bfseries xget.\normalfont  The first opens the connection to R; the second closes this connection; the third runs a command in that connection; the fourth places an object into R; and the fifth brings an existing object in the R workspace into EViews. \\
+
+To install or update the {\bf AMA} package, start R and enter:
+
+{\bf options(repos = c(CRAN = "ftp://cran.r-project.org/pub/R")) }
+
+{\bf install.packages("AMA")}. 
+
+
+One need not repeat these commands in subsequent R session unless a package
+update is desired.
+
+\vspace{0.15in}
+
+To use the installed {\bf AMA} package enter:
+
+library(AMA)
+
+
+
+
+% To install the R package, download AMA$\_$1.0.zip.  Open R.  Under the ``packages'' menu, select ``install package from local zip file'', find wherever you saved the AMA$\_$1.0.zip file, and select it (NOTE: \itshape Do NOT just select ``load package''! This causes R to think you want to download a package from a CRAN repository, and it'll bring up a menu--often after a 3-4 minute delay where you can't use R\normalfont).  The package should install correctly.  To test this, type {\bf library(AMA)} at the R command line.  If no error message appears, the package was installed and has loaded successfully. 
+% From then on, you will be able to load the AMA library into a 
+% new R session with just the {\bf library(AMA)} command.
+
+
+\subsection{Model Processing}
+%Documentation and an EViews subroutine to convert an EViews Model object to the structural matrices required by the Anderson-Moore Algorithm are forthcoming.  
+Currently,  there are two ways to get a model into a form usable by AMA:
+\begin{enumerate}
+\item Structural matrices (the $H$ matrices) already in EViews
+\item Model in MODELEZ syntax in separate file (for details of MODELEZ syntax, see \hyperlink{mez}{below})
+\end{enumerate}
+In the first case, the procedure is straightforward and will be explained below.  In the second case, you will be able to import the structural matrices to EViews (if you like); regardless, you can execute all commands from within EViews. \\
+
+\subsubsection{The Structural Coefficients Matrix H Needed by the Algorithm}
+The Anderson-Moore Algorithm defines and uses a matrix of structural coefficients for each lag and lead (and present state) in the model.  If the model has $\tau$ lags and $\theta$ leads, then we have the matrices $H_{-\tau},...,H_0, ...,H_{\theta}$.  The ``structural coefficients'' matrix needed by the algorithm is simply the block matrix $\left[H_{-\tau}\cdots H_0 \cdots H_{\theta} \right] $.  These can be computed by providing the model equations and parameters.% (which are perhaps initialized by data or simulation).
+
+\subsubsection{MODELEZ Syntax}
+\hypertarget{mez}{If} you want to use this format, save the model in a file 
+%ending with .mod (it may be necessary to save it as a .txt file first then manually change the file extension) 
+using the methods and syntax described below.  The example in the last section includes a sample MODELEZ file. \\
+The first line of the file should be the model name, written as follows \begin{itemize}
+\item MODEL $>$ NAMEOFMODEL 
+\end{itemize}
+Next, list the variables (note: in the AMA formulation, all variables are considered endogenous) as follows: \begin{itemize}
+\item ENDOG $>$ \\ $\makebox[0.3in][1]{}$ variable1 \\ $\makebox[0.3in][1]{}$ variable2 \\ $\makebox[0.45in][1]{} \vdots$ 
+\end{itemize}
+After this, you'll need to list the equations.  Write each equation as follows: \begin{itemize}
+\item EQUATION $>$ NAMEOFEQUATION \\
+EQ $>$ (model equation--see below)
+\end{itemize}
+
+ The model equations can be written in two general forms.  The first is dependent variable = ...; the second can just list an expression, with no equals sign, which will be assumed equal to zero.  Where leads and lags are appropriate, use LEAD(variablename, numberOfLead) or LAG(variablename, numberOfLag).  For example, if your model includes the equation $Y_t = \delta Y_{t-2} + \beta IS_{t+3} + K$ you would write the equation in MODELEZ in one of the following two ways (assuming DELTA corresponds to $\delta$ and BETA corresponds to $\beta$): \\
+\begin{center} Y = DELTA*LAG(Y, 2) + BETA*LEAD(IS, 3) + K \qquad \qquad OR \\
+Y - DELTA*LAG(Y, 2) - BETA*LEAD(IS, 3) - K \end{center}
+
+After inputting all variables and equations into your .mod file, the last line of the file should just be ``END'' (without the quotation marks, and in all CAPS). \\
+
+The \hyperlink{exmpl}{example} MODELEZ file will hopefully make this clearer. \\
+
+\subsection{Computing using R}
+Note: for details about the arguments to each function, please see the ``AMA-Manual.pdf'' file.  It is written in the R documentation standard.  For each function you will find a list of inputs as well as a description of each input, the function's output, and in some cases a short example of how to use the function. \\
+
+Before carrying out any computations, you need to open the connection to R and load the AMA library.  Run the following: \begin{itemize}
+\item xopen(R) // (if you haven't already)
+\item xrun (library(AMA)) // this loads the AMA package
+\end{itemize}
+Note: you need to have the `RJava' package installed. This comes automatically with almost all R distributions, however, and so you almost certainly already have it.
+\subsubsection{Getting the $H$ matrix into R}
+If you have the structural coefficients matrix $H$ already in the EViews workfile, then to place this matrix into \bfseries R \normalfont you would do the following: \begin{itemize}
+\item Run the command {\bfseries xput(hmat)} (where {\bfseries hmat} is the name I've chosen to give the matrix $H$--you can replace this with whatever name you'd like) 
+\end {itemize}
+If you do not have the structural coefficients matrix $H$ already in the EViews workfile, but you have it in a MODELEZ file (say, myModel.mod) then to get the H matrix into R you would do the following, utilizing the AMA package's function genHmat: \begin{itemize}
+\item If you have the model parameters stored in a text file (say, myParams.txt), then run the command {\bfseries xrun hmat $<$- genHmat(``myModel.mod'', ``myParams.txt'')}. 
+\item  If you instead have the model parameters stored in an EViews vector object, say ``myParamVec'', then you should first run {\bfseries xput myParamVec} and then run the command {\bfseries xrun hmat $<$- genHmat(``myModel.mod'', myParamVec)}
+\item If you have the model parameters stored in a text file (say, myParams.txt) AND would like to obtain not only the matrix H but the parameters in a vector as well (in order to easily update them in EViews or R), the procedure is slightly more complicated.  Instead of the previous two options, you would run the following commands (after opening the connection to R):
+\begin{itemize}
+  \item xrun(hlist $<$- genHmat(``myModel.mod'', ``myParams.txt'', wantParamVec = TRUE))
+  \item Extract the H matrix using the command `xrun(hmat$<$- hlist[1][[1]])', and the parameter vector using the command `xrun(myParamVec $<$- hlist[2][[1]])' 
+\end{itemize} %inner itemize
+\end{itemize}
+NOTE: Wherever you see ``myModel.mod'' or ``myParams.txt'' above, replace these with the full path to the respective files (for example, ``C:/Users/Aneesh/Documents/AMA/myModel.mod'').  Remember to use the quotation marks! Otherwise, R won't recognize this as a string object.
+
+\subsubsection{Next Steps}
+You should now have the $H$ matrix into R and the R package loaded. \\
+
+You can now compute any of the matrices associated with AMA.  You will need to tell these functions how many equations, lags, and leads are in the model.  To do so: \begin{itemize}
+\item xrun neq = $<$number of equations$>$
+\item xrun leads = $<$number of leads in the model$>$
+\item xrun lags = $<$number of lags in the model$>$
+\end{itemize}
+To compute the matrices you desire, please see AMA-Manual.pdf for a list of functions, their arguments, descriptions of their arguments, and description of their outputs.  Just xrun the function you desire.  For example, if you wanted to compute the reduced-form coefficients matrix $B$, you would type (in EViews) \begin{itemize}
+\item xrun(bmat $<$- genBmat(hmat, neq, leads, lags))
+\end{itemize}
+This creates an object in the R workspace called {\bfseries bmat}.  To bring it back into EViews, you would run \bfseries xget bmat \normalfont; this places it in the current EViews workfile as a matrix called {\bfseries bmat}. (Note: this means that you should assign distinct names to objects! EViews will often complain if you try to replace an object with something else of the same name). \\
+
+Note that you can generate the matrices $B$ and $Q$ directly via a call to the function \bfseries callAMA \normalfont.  However, you'll get them back as vectors (which correspond to matrices stored columnwise) which may create unnecessary hassle if you're trying to bring them back into EViews.  To get around this, use the \bfseries genBmat, genQmat\normalfont, etc. functions directly.  You don't need to use\bfseries callAMA \normalfont first--these functions call AMA already.  \\
+Obviously for functions such as {\bfseries genScof}, you'll have to run {\bfseries genBmat} first (since {\bfseries genScof} takes the matrix $B$ as an input).  Be aware of which matrices depend on which. \\
+
+\subsection{Using R as a standalone on Windows or Linux}
+The idea here is extremely similar to the EViews examples above.  Just remove the {\bfseries xput, xget}, and {\bfseries xrun} statements. 
+Although EViews does not run on Linux, 
+you can still install and use the AMA R package on the Linux.
+
+\section{Examples}
+We walk through a simple example from EViews, using a MODELEZ file.  In the ``Examples'' folder, the model in MODELEZ syntax is ``example7'', and the parameter file is ``example7params.txt''.  From the EViews side, we run the following commands with an explanation of what they do: \\
+
+\newcommand{\anEx}[2]{\item[#1]{{\color{blue} #2}}}
+
+\begin{description}
+\anEx{open R}{xopen(r) }
+\anEx{ loads the AMA (and rJava) library }{xrun library(AMA)}
+\anEx{display function documentation}{xrun help(callAMA)}
+\anEx{get local filename for package example model}{\ \\modName$<$-system.file("extdata/example7.mod",package="AMA")}
+\anEx{get local filename for package example parameters}{\ \\paramName$<$-system.file("extdata/example7params.prm",package="AMA")}
+\anEx{create H matrix }{xrun hmat $<$- genHmat("modName", "paramName") }
+\anEx{bring H matrix into EViews }{xget hmat }
+\anEx{create reduced-form coeff. matrix }{xrun bmat $<$- genBmat(hmat, 4, 1, 1) }
+\anEx{import reduced-form coeff. matrix into EViews }{xget bmat}
+\anEx{create observable structure  matrix }{xrun scof $<$- genScof(hmat, bmat, 4, 1, 1)}
+\anEx{import observable structure matrix into EViews }{xget scof}
+\anEx{make $\phi, F$}{xrun factMats $<$- getFactorMatrices(hmat, bmat, neq, nlead, nlag)}
+\anEx{ get the matrix $\phi$ explicitly}{xrun phiMat $<$- factMats[1][[1]]}
+\anEx{get the matrix $F$}{xrun fMat $<$- factMats[2][[1]]}
+\anEx{imports matrix $\phi$ into EViews}{xget phiMat}
+\anEx{imports matrix $F$ back into EViews}{xget fMat}
+\anEx{create stochastic transition matrices}{xrun stochMats $<$-getStochTrans(hmat, scof) }
+\anEx{get the matrix $\mathcal{A}$}{xrun scriptA $<$- stochMats[1][[1]]}
+\anEx{get the matrix $\mathcal{B}$}{xrun scriptB $<$- stochMats[2][[1]]}
+\anEx{imports matrix $\mathcal{A}$ into EViews}{xget scriptA}
+\anEx{imports matrix $\mathcal{B}$ into EViews}{xget scriptB}
+\anEx{closes the connection to R}{xclose(r)}
+\end{description}
+
+
+Note that if you reopen the connection to R, all variables must be redefined.  Make sure to use xget on all the variables you want before closing R, and that you've carried out all the computations you wanted to use R to do. \\
+
+%When the EViews model-to-matrix parser is available, 
+%an example of how to use that parser to generate the $H$ matrix will appear in this section as well.  
+If the matrix $H$ is already in EViews, 
+%(and this will be the case if the model-to-matrix parser is used), 
+then instead of using the genHmat function in the example above, just use xput(hmat) instead.  The rest is unchanged.
+
+
+\end{document}

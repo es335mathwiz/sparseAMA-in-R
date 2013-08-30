@@ -1,0 +1,155 @@
+\documentclass[12pt]{article}
+\usepackage[margin = 1.2in, nohead, nofoot]{geometry}
+\usepackage{color}
+\usepackage{hyperref}
+\title{How to use the Anderson-Moore  R Implementation}
+\author{Aneesh Raghunandan\thanks{Updated by Gary S. Anderson February 21, 2011.}}
+\date{August 6, 2010  } 
+
+\newcommand{\rcmd}[1]{
+\vspace{0.2in}
+
+{\bfseries #1}
+
+\vspace{0.2in}
+}
+\begin{document}
+\maketitle
+\section{Preliminaries} 
+
+
+The package was written using R 2.11.1 and is available from the Comprehensive
+ R Archive Network \href{http://cran.r-project.org/}{(CRAN).}
+You need to have the `RJava' package installed. This comes automatically with almost all R distributions, however, and so you almost certainly already have it.
+\subsection{Installation}
+
+
+To install or update the {\bf AMA} package, start R and click on Packages$\rightarrow$Load package....  to get a list of packages to choose from.  Then, click
+on AMA to install the package.\footnote{The package may work for older versions of R, but
+it will not likely be available as a choice in the Load packages...  menu.
+Using the command line installation alternative 
+will allow you to try to load the package.}  If you do not see it on the list or if you prefer using the
+R command line to install the package enter:
+\begin{itemize}
+\item {\bf options(repos = c(CRAN = "ftp://cran.r-project.org/pub/R")) }
+\item {\bf install.packages("AMA")}. 
+\end{itemize}
+
+One need not repeat these commands in subsequent R session unless a package
+update is desired.
+
+\vspace{0.15in}
+
+To use the installed {\bf AMA} package enter:
+
+library(AMA)
+
+
+
+
+
+\subsection{The Structural Coefficients Matrix H Needed by the Algorithm}
+The Anderson-Moore Algorithm defines and uses a matrix of structural coefficients for each lag and lead (and present state) in the model.  If the model has $\tau$ lags and $\theta$ leads, then we have the matrices $H_{-\tau},...,H_0, ...,H_{\theta}$.  The ``structural coefficients'' matrix needed by the algorithm is simply the block matrix $\left[H_{-\tau}\cdots H_0 \cdots H_{\theta} \right] $.  These can be computed by providing the model equations and parameters.% (which are perhaps initialized by data or simulation).
+
+\subsection{MODELEZ Syntax}
+\hypertarget{mez}{If} you want to use this format, save the model in a file 
+%ending with .mod (it may be necessary to save it as a .txt file first then manually change the file extension) 
+using the methods and syntax described below.  The example in the last section includes a sample MODELEZ file. \\
+The first line of the file should be the model name, written as follows \begin{itemize}
+\item MODEL $>$ NAMEOFMODEL 
+\end{itemize}
+Next, list the variables (note: in the AMA formulation, all variables are considered endogenous) as follows: \begin{itemize}
+\item ENDOG $>$ \\ $\makebox[0.3in][1]{}$ variable1 \\ $\makebox[0.3in][1]{}$ variable2 \\ $\makebox[0.45in][1]{} \vdots$ 
+\end{itemize}
+After this, you'll need to list the equations.  Write each equation as follows: \begin{itemize}
+\item EQUATION $>$ NAMEOFEQUATION \\
+EQ $>$ (model equation--see below)
+\end{itemize}
+
+ The model equations can be written in two general forms.  The first is dependent variable = ...; the second can just list an expression, with no equals sign, which will be assumed equal to zero.  Where leads and lags are appropriate, use LEAD(variablename, numberOfLead) or LAG(variablename, numberOfLag).  For example, if your model includes the equation $Y_t = \delta Y_{t-2} + \beta IS_{t+3} + K$ you would write the equation in MODELEZ in one of the following two ways (assuming DELTA corresponds to $\delta$ and BETA corresponds to $\beta$): \\
+\begin{center} Y = DELTA*LAG(Y, 2) + BETA*LEAD(IS, 3) + K \qquad \qquad OR \\
+Y - DELTA*LAG(Y, 2) - BETA*LEAD(IS, 3) - K \end{center}
+
+After inputting all variables and equations into your .mod file, the last line of the file should just be ``END'' (without the quotation marks, and in all CAPS). \\
+
+The \hyperlink{exmpl}{example} MODELEZ file will hopefully make this clearer. \\
+
+\subsection{Computing using R}
+For details about the arguments to each function, please see the \href{AMA-Manual.pdf}{``AMA-Manual.pdf''} file.  It is written in the R documentation standard.  For each function you will find a list of inputs as well as a description of each input, the function's output, and in some cases a short example of how to use the function. \\
+
+Before carrying out any computations, you will need  load the AMA library.  
+
+library(AMA) // this loads the AMA package
+
+If you have the structural coefficients matrix $H$ in a MODELEZ file (say, myModel.mod) then to get the H matrix into R you would do the following, utilizing the AMA package's function genHmat: 
+If you have the model parameters stored in a text file (say, myParams.txt), then run the command 
+
+\rcmd{  hmat $<$- genHmat(``myModel.mod'', ``myParams.txt'')}. 
+
+If you instead have the model parameters stored in an EViews vector object, say ``myParamVec'', and then run the command 
+
+\rcmd{  hmat $<$- genHmat(``myModel.mod'', myParamVec)}
+
+If you have the model parameters stored in a text file (say, myParams.txt) AND would like to obtain not only the matrix H but the parameters in a vector as well (in order to easily update them in EViews or R), the procedure is slightly more complicated.  Instead of the previous two options, you would run the following commands (after opening the connection to R):
+
+hlist $<$- genHmat(``myModel.mod'', ``myParams.txt'', wantParamVec = TRUE)
+
+Extract the H matrix using the command `hmat$<$- hlist[1][[1]]', and the parameter vector using the command 
+
+\rcmd{ `myParamVec $<$- hlist[2][[1]]' }
+
+
+Wherever you see ``myModel.mod'' or ``myParams.txt'' above, replace these with the full path to the respective files (for example, ``C:/Users/Aneesh/Documents/AMA/myModel.mod'').  Remember to use the quotation marks! Otherwise, R won't recognize this as a string object. 
+
+\subsubsection{Next Steps}
+You should now have the $H$ matrix into R and the R package loaded. \\
+
+You can now compute any of the matrices associated with AMA.  You will need to tell these functions how many equations, lags, and leads are in the model.  To do so: \begin{itemize}
+\item  neq = $<$number of equations$>$
+\item  leads = $<$number of leads in the model$>$
+\item  lags = $<$number of lags in the model$>$
+\end{itemize}
+To compute the matrices you desire, please see AMA-Manual.pdf for a list of functions, their arguments, descriptions of their arguments, and description of their outputs.  Just run  the function you desire.  For example, if you wanted to compute the reduced-form coefficients matrix $B$, you would type 
+
+ \rcmd{bmat $<$- genBmat(hmat, neq, leads, lags)}
+This creates an object in the R workspace called
+ bmat.  To bring it back into EViews, you would run \bfseries  bmat \normalfont; this places it in the current EViews workfile as a matrix called {\bfseries bmat}. (Note: this means that you should assign distinct names to objects! EViews will often complain if you try to replace an object with something else of the same name). \\
+
+Note that you can generate the matrices $B$ and $Q$ directly via a call to the function \bfseries callAMA \normalfont.  However, you'll get them back as vectors (which correspond to matrices stored columnwise) which may create unnecessary hassle if you're trying to bring them back into EViews.  To get around this, use the \bfseries genBmat, genQmat\normalfont, etc. functions directly.  You don't need to use\bfseries callAMA \normalfont first--these functions call AMA already.  \\
+Obviously for functions such as {\bfseries genScof}, you'll have to run {\bfseries genBmat} first (since {\bfseries genScof} takes the matrix $B$ as an input).  Be aware of which matrices depend on which. \\
+
+
+\section{Examples}
+We walk through a simple example from EViews, using a MODELEZ file.  In the ``Examples'' folder, the model in MODELEZ syntax is ``example7'', and the parameter file is ``example7params.txt''.  From the EViews side, we run the following commands with an explanation of what they do: \\
+
+\newcommand{\anEx}[2]{\item[#1]{{\color{blue} #2}}}
+
+\begin{description}
+\anEx{ loads the AMA (and rJava) library }{ library(AMA)}
+\anEx{display function documentation}{ help(callAMA)}
+\anEx{get local filename for package example model}{\ \\modName$<$-system.file("extdata/example7.mod",package="AMA")}
+\anEx{get local filename for package example parameters}{\ \\paramName$<$-system.file("extdata/example7params.prm",package="AMA")}
+\anEx{create H matrix }{ hmat $<$- genHmat("modName", "paramName") }
+\anEx{bring H matrix into EViews }{ hmat }
+\anEx{create reduced-form coeff. matrix }{ bmat $<$- genBmat(hmat, 4, 1, 1) }
+\anEx{import reduced-form coeff. matrix into EViews }{ bmat}
+\anEx{create observable structure  matrix }{ scof $<$- genScof(hmat, bmat, 4, 1, 1)}
+\anEx{import observable structure matrix into EViews }{ scof}
+\anEx{make $\phi, F$}{ factMats $<$- getFactorMatrices(hmat, bmat, neq, nlead, nlag)}
+\anEx{ get the matrix $\phi$ explicitly}{ phiMat $<$- factMats[1][[1]]}
+\anEx{get the matrix $F$}{ fMat $<$- factMats[2][[1]]}
+\anEx{imports matrix $\phi$ into EViews}{ phiMat}
+\anEx{imports matrix $F$ back into EViews}{ fMat}
+\anEx{create stochastic transition matrices}{ stochMats $<$-getStochTrans(hmat, scof) }
+\anEx{get the matrix $\mathcal{A}$}{ scriptA $<$- stochMats[1][[1]]}
+\anEx{get the matrix $\mathcal{B}$}{ scriptB $<$- stochMats[2][[1]]}
+\anEx{imports matrix $\mathcal{A}$ into EViews}{ scriptA}
+\anEx{imports matrix $\mathcal{B}$ into EViews}{ scriptB}
+\anEx{closes the connection to R}{xclose(r)}
+\end{description}
+
+
+
+
+
+\end{document}

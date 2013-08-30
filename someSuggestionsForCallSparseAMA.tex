@@ -1,0 +1,74 @@
+\documentclass[12pt]{article}
+\usepackage{frb}
+\usepackage{bookman}
+%\spreadout
+\myphone{(202) 452-2687}
+\myemail{ganderson\char64frb.gov}
+\myuucp{}
+\myname{Gary S. Anderson}
+\myrank{}
+\sendto{Aneesh}
+\begin{document}
+\begin{memo}{Suggested mods for callSparseAMA}
+%mailinglabel
+%\cc{}
+%\initials{ }
+%\ps{}
+
+Several changes could make the code slightly easier for users and help
+retain the potential advantage of exploiting sparsity during the sparseAMA
+calculations.
+
+\begin{description}
+\item[Matrix dimensions] Here is a complete table of the dimensions of the various matrices:\ 
+
+\newcommand{\aRow}[3]{$#1$&$#2$&$#3$\\}
+  \begin{tabular}{|l|c|c|}
+\hline
+\multicolumn{1}{|c|}{Matrix}&
+\multicolumn{1}{|c|}{Dense}&
+\multicolumn{1}{|c|}{Sparse}\\
+\hline
+\aRow{H}{L \times L (\tau + \theta +1)}{\eta L^2 (\tau + \theta +1)}    
+\hline
+\aRow{Q}{L \theta \times L (\tau + \theta )}{\eta L^2 (\tau + \theta)\theta }    
+\hline
+\aRow{B}{L  \times L \tau }{\eta L^2 \tau  }    
+\hline
+\aRow{S}{L  \times L (\tau+1) }{\eta L^2 (\tau+1)  }    
+\hline
+\aRow{\phi}{L  \times L  }{\eta L^2  }    
+\hline
+\aRow{F}{L \theta \times L \theta }{\eta L^2 \theta^2 }    
+\hline
+\aRow{\lambda_r}{L (\tau +\theta) }{ L(\tau \theta) }    
+\hline
+\aRow{\lambda_i}{L (\tau +\theta) }{ L(\tau \theta) }    
+\hline
+\aRow{\mathcal{A}}{L \tau \times L\tau}{ \eta (L\tau)^2 }    
+\hline
+\aRow{\mathcal{B}}{L \tau \times L }{ \eta L^2\tau }    
+\hline
+  \end{tabular}
+
+where $L$ is the number of model equations (also, the number of rows  $H$), $\tau$ is the number of lags in the model, $\theta$ is the number of leads in the model and $0 < \eta \le 1 $ is a new user specified sparsity parameter.
+
+
+\item[nstate] nstate is the number of non-zero columns in the 
+lagged part of the H matrix.
+I think the parameter nstate would be less useful for 
+dimensioning the matrices than providing an overall sparsity parameter.  
+It might be helpful, for some applications, to have a C function that counts
+the number of non-zero columns in the lagged part of the H matrix.
+
+
+\item[callSparseAMA argument list] I think a shorter argument list would suffice for
+the call. It should include $L, \tau, \theta,$ and  $\eta$ and exclude
+nstate and hcols
+\end{description}
+
+
+
+\end{memo}
+%\mailinglabel
+\end{document}

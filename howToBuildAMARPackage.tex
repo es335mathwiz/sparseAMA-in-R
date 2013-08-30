@@ -1,0 +1,39 @@
+\documentclass[12pt]{article}
+\usepackage{dirtree}
+\usepackage{hyperref}
+\newcommand{\cmd}[1]{{ \textbf{ \textit {#1}}}}
+\title{Regenerating the AMA R Package}
+\author{Gary Anderson}
+\begin{document}
+\maketitle
+
+Aneesh Raghunandan carried out the initial work constructing an R package for
+the  AMA routines.  He constructed Makefiles for building a 32bit windows version and 32 and 64 bit Linux versions.  The Windows routines rely upon RTools.
+
+I intend to add RUnit tests to the makefiles.
+
+
+\href{http://biosun1.harvard.edu/courses/individual/bio271/lectures/L6/Rpkg.pdf}{A description of R package mechanism.}
+\href{http://cran.r-project.org/doc/manuals/R-exts.pdf}{Comprehensive document of writing R extensions.}
+
+
+\appendix
+
+email from Aneesh:
+
+\begin{quote}
+  Gary,
+
+
+The makefiles (Makefile and Makefile.win) are automatically invoked when the R CMD INSTALL --build --html or R CMD build commands are invoked; on a Windows machine, the compiler looks for Makefile.win first, and if it finds it it proceeds to use whatever's in Makefile.win and ignore Makefile (if there's no Makefile.win it'll just use the contents of Makefile). On non-Windows systems, Makefile.win is ignored altogether.  If no makefiles are present in the directory R defaults to compiling any source (C or Fortran) files that it finds and then including these all in the .dll or .so (depending on the architecture).  The reason for having custom makefiles is to include the precompiled LAPACK/BLAS .o files instead of having to recompile from source each time the package is rebuilt. 
+
+
+The C source code for the sparseAim files is in the src folder of the package, though, rather than precompiled object files. The easiest way to rebuild the package would be to just update the necessary source file (keeping the file name the same, or updating the makefiles to reflect any changes in nomenclature) and then rerunning R CMD check/R CMD build/R CMD INSTALL --build --html from the command line.  Unless the issues run wider than the C code? Running R CMD check first is extremely useful.
+
+
+Let me know,
+
+
+Aneesh
+\end{quote}
+\end{document}
